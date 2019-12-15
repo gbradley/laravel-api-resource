@@ -1,0 +1,24 @@
+{
+    "name": "gbradley/laravel-api-resource",
+    "type": "library",
+    "description": "Easier Laravel APIs",
+    "keywords": ["laravel","rest","api"],
+    "homepage": "https://github.com/gbradley/laravel-api-resource",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Graham Bradley",
+            "email": "hello@gbradley.com",
+            "homepage": "https://gbradley.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=7.1.0"
+    },
+    "autoload": {
+        "psr-4": {
+        	"GBradley\\ApiResource\\": "src"
+        }
+    }
+}
