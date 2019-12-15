@@ -2,10 +2,10 @@ This package expands on Laravel's base classes to provide a more succinct yet po
 
 ## Goals
 
-- Less code repetition; API resources take less time to write
-- Improved relation handling including loading on-request
+- Less code repetition; API resources take less time to write and maintain
+- Improved relation handling including loading on-demand
 - More control over data wrapping
-- unopinionated; won't affect your existing API
+- unopinionated; won't affect your existing API by default
 
 ## Requirements
 
@@ -16,6 +16,12 @@ This package expands on Laravel's base classes to provide a more succinct yet po
 	$ composer require gbradley/laravel-api-resource
 	
 ## Usage
+
+- [Extending the new resource class](#extending-the-new-resource-class)
+- [Quicker attribute definitions](#quicker-attribute-definitions)
+- [Relation handling](#relation-handling)
+- [Contextual data](#contextual-data)
+- [Data wrapping](#data-wrapping)
 
 ### Extending the new resource class
 
@@ -62,7 +68,7 @@ to this:
 	
 This has the additional benefit of retaning date formats in casted `date` or `datetime` attributes. Normally you would have to specify the format again in  your resource, but this will now be handled for you.
 
-### Better relation handling
+### Relation handling
 
 Laravel's resources have two strategies for adding relations:
 
@@ -167,7 +173,7 @@ returning something like this:
 		]
 	}
 	
-## Contextual data
+### Contextual data
 
 Sometimes you may want to modify your resource's transformation based on information that isn't found in the request or the model being transformed.
 
@@ -206,7 +212,7 @@ You may use `mergeContext()` to merge all or part of the context into your repre
 Any context data provided to a resource will be passed down to any other resources loaded via relations. In the above example, the context data will be available on the instances of `BlogResource`.
 
 
-## Data wrapping
+### Data wrapping
 	
 Laravel's resources allow you to disable data wrapping, however this does so for both models and collections. Although the security risks of returning top-level JSON arrays appear to have been resolved in all browers, some may prefer to avoid wrapping single models but retain wrapping for collections.
 
