@@ -4,7 +4,7 @@
  * This trait can be used to set & provide relation names to both models and collections.
  */
 
-namespace GBradley\ApiResource;
+namespace GBradley\ApiResource\Extras;
 
 trait HandlesNestedRelationsTrait
 {

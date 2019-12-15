@@ -4,8 +4,9 @@ namespace GBradley\ApiResource;
 
 use GBradley\ApiResource\Builder;
 use GBradley\ApiResource\AnonymousResourceCollection;
-use GBradley\ApiResource\HandlesNestedRelationsTrait;
-
+use GBradley\ApiResource\Extras\HandlesContextTrait;
+use GBradley\ApiResource\Extras\HandlesNestedRelationsTrait;
+use GBradley\ApiResource\ResourceResponse;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -18,7 +19,39 @@ use Illuminate\Support\Str;
 class Resource extends JsonResource
 {
 
-	use HandlesNestedRelationsTrait;
+	use HandlesContextTrait, HandlesNestedRelationsTrait;
+
+	public static $wrap = 'data';
+
+	public static $wrapCollection = null;
+
+	// ! Wrapping
+
+	/**
+	 * @override
+	 */
+	public static function wrap($value)
+    {
+        static::$wrap = $value;
+        static::$wrapCollection = $value;
+    }
+
+    /**
+     * Enable wrapping of collections using the provided value.
+     */
+    public static function wrapCollection($value)
+    {
+        static::$wrapCollection = $value;
+    }
+
+	/**
+	 * @override
+	 */
+	public static function withoutWrapping()
+    {
+        static::$wrap = null;
+        static::$wrapCollection = null;
+    }
 
 	/**
 	 * Create a new builder instance for the item to be converted into the called resource.
@@ -35,6 +68,11 @@ class Resource extends JsonResource
 	{
 		return new AnonymousResourceCollection($resource, static::class);
 	}
+
+	public function toResponse($request)
+    {
+        return (new ResourceResponse($this))->toResponse($request);
+    }
 
 	/**
 	 * Return a representation of the resource from an array of attrbutes.
@@ -99,8 +137,6 @@ class Resource extends JsonResource
 	 */
 	protected function wrapWhenLoadedWith(string $relation, ?string $resource)
 	{
-
-		
 		$when = $this->whenLoaded($relation);
 
 		// If a resource is provided, determine how to use it.
@@ -111,9 +147,19 @@ class Resource extends JsonResource
 				$when = $resource::collection($when);
 			}
 			$when->setRelations($this->getNestedRelations());
+			$when->setContext($this->context);
 		}
 
 		return $when;
+	}
+
+	/**
+	 * Merge the current context.
+	 */
+	protected function mergeContext($key = null)
+	{
+		$data = $this->getContext($key);
+		return $this->mergeWhen($data, $data);
 	}
 
 	/**

@@ -15,7 +15,8 @@ class Builder implements Responsable {
     protected $resource_class;
     protected $resource;
     protected $relations = [];
-    protected $requested_relations = null;
+    protected $requested_relations;
+    protected $context;
 
     public function __construct($resourceable, string $resource_class)
     {
@@ -107,6 +108,15 @@ class Builder implements Responsable {
     }
 
     /**
+     * Store context data.
+     */
+    public function withContext($context) : Builder
+    {
+        $this->context = $context;
+        return $this;
+    }
+
+    /**
      * Expand an array of potentially nested relations into all variants.
      */
     protected function unnestRelations(array $relations) : array
@@ -157,6 +167,9 @@ class Builder implements Responsable {
         $this->resource->setRelations(array_map(function($relation) {
             return explode('.', $relation);
         }, $relations));
+
+        // Set the context on the resource.
+        $this->resource->setContext($this->context);
 
         return $this;
     }
