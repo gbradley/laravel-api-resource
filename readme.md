@@ -95,7 +95,7 @@ Use `withOptionalRelations()` in the same manner to define relations which will 
 
 As you can see from the above example, these methods also accept nested relations.
 
-Now the controller has defined what it allows the resource to expose, you can configure the request to do so using `mergeWhenExplicitlyLoaded()`. This method accepts the array of relation names that the resource can expose:
+Now the controller has defined what it allows the resource to expose, you can configure the resource to do so using `mergeWhenExplicitlyLoaded()`. This method accepts the array of relation names that the resource can expose:
 
 	class PostResource extends Resource
 	{
