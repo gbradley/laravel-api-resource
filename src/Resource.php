@@ -91,8 +91,8 @@ class Resource extends JsonResource
 			// Use call-forwarding to access the underling object's attribute value.
 			$value = $this->{$attribute};
 
-			// If the value is cast to date / datetime and a format is provided, apply the format to the value.
-			if (($cast = $casts[$attribute] ?? null) && preg_match('/^date(?!time)?:(.+)/', $cast, $match)) {
+			// If the value should be cast to date / datetime and a format is provided, apply the format to the value.
+			if (!(is_null($value)) && ($cast = $casts[$attribute] ?? null) && preg_match('/^date(?!time)?:(.+)/', $cast, $match)) {
 				$value = $value->format($match[1]);
 			}
 
