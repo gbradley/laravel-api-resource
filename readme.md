@@ -5,7 +5,7 @@ This package expands on Laravel's base classes to provide a more succinct yet po
 - Less code repetition; API resources take less time to write and maintain
 - Improved relation handling including loading on-demand
 - More control over data wrapping
-- unopinionated; won't affect your existing API by default
+- Won't affect your existing API by default
 
 ## Requirements
 
@@ -25,7 +25,7 @@ This package expands on Laravel's base classes to provide a more succinct yet po
 
 ### Extending the new resource class
 
-In your resource, instead of extending Laravel's `Response`, change this to extend `GBradley\ApiResource\Resource` instead:
+In your resource, instead of extending Laravel's `Resource`, change this to extend `GBradley\ApiResource\Resource` instead:
 
 	namespace App\Http\Resources;
 	
@@ -40,7 +40,7 @@ That's it! You can now use this resource as you would any normal resource. A mai
 
 ### Quicker attribute definitions
 
-In our example resource, lets define some attributes. Normally you would have to do this individually, which can be slow to write. Instead, you can now use `mergeAtrributes()` to quickly define the attributes you wish to use from your underlying model. This reduces something like:
+In our example resource, lets define some attributes. Normally you would have to do this individually, which can be quite verbose with a lot of repetition. Instead, you can now use `mergeAtrributes()` to quickly define the attributes you wish to use from your underlying model. This reduces something like:
 
 	class PostResource extends Resource
 	{
@@ -66,7 +66,20 @@ to this:
 			];
 		}
 	
-This has the additional benefit of retaning date formats in casted `date` or `datetime` attributes. Normally you would have to specify the format again in  your resource, but this will now be handled for you.
+This has the additional benefit of retaining date formats in casted `date` or `datetime` attributes. Normally you would have to specify the format again in your resource, but this will now be handled for you.
+
+Of course, you can mix both the new and old styles if needed:
+
+	class PostResource extends Resource
+	{
+
+		public function toArray($request)
+		{
+			return [
+				$this->mergeAttributes('id', 'title', ...),
+				'dated'		=> $this->dated->format('d/m/Y'),
+			];
+		}
 
 ### Relation handling
 
@@ -74,7 +87,7 @@ Laravel's resources have two strategies for adding relations:
 
 **Direct loading** - this always loads relations, often resulting in non-eager loaded queries being executed to generate data which the front-end may not need.
 
-**When loaded** - this returns relations when they are already loaded, expecting the controller to handle loading. However, you may also have business logic that loads relations (such as summing up values), meaning your response structure may be affected by internal side-effects.
+**Conditional loading** - this returns relations only when they are already loaded, deffering loading to the controller. However, your business logic may also load relations (for example inside an event handler), meaning your response structure can be affected by internal side-effects.
 
 Instead, this package allows controllers to explicitly define which relations the resource *can* expose, with the resource determining which relations it *will* expose. These can either be *required* relations, which will always be exposed, or *optional* relations, which will be exposed if specified in the current request. The result is a flexible system which also utilises eager-loading.
 
