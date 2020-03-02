@@ -152,6 +152,16 @@ class Builder implements Responsable {
     }
 
     /**
+     * Prepare the resource and convert to an array.
+     */
+    public function toArray($request)
+    {
+        return $this->prepare()
+            ->getResource()
+            ->resolve($request);
+    }
+
+    /**
      * Prepare the resource for use.
      */
     protected function prepare()
