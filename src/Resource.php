@@ -92,7 +92,7 @@ class Resource extends JsonResource
 			$value = $this->{$attribute};
 
 			// If the value should be cast to date / datetime and a format is provided, apply the format to the value.
-			if (!(is_null($value)) && ($cast = $casts[$attribute] ?? null) && preg_match('/^date(?!time)?:(.+)/', $cast, $match)) {
+			if (!(is_null($value)) && ($cast = $casts[$attribute] ?? null) && preg_match('/^date(?:time)?:(.+)/', $cast, $match)) {
 				$value = $value->format($match[1]);
 			}
 
