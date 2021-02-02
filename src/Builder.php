@@ -195,8 +195,11 @@ class Builder implements Responsable {
         // Determine if the reource is a paginator.
         if ($loadable instanceof AbstractPaginator) {
 
-            // Get the paginator's underlying collection and find the first model, if it exists.
-            $collection = $loadable->getCollection();
+            // Get the paginator's underlying model collection and find the first model, if it exists.
+            $collection = $loadable->getCollection()->map(function($item) {
+                return $item->resource ?? $item;
+            });
+
             if ($model = $collection->first()) {
 
                 // Convert the paginator's (support) collection into a new (eloquent) collection. Note
