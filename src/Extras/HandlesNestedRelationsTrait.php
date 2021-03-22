@@ -24,7 +24,9 @@ trait HandlesNestedRelationsTrait
      */
     public function getTopLevelRelations() : array
     {
-    	return array_map('array_shift', $this->relations);
+        return array_map(function($relation) {
+            return array_shift($relation);
+        }, $this->relations);
     }
 
     /**
