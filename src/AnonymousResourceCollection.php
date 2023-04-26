@@ -11,20 +11,25 @@ use Illuminate\Pagination\AbstractPaginator;
 
 class AnonymousResourceCollection extends BaseAnonymousResourceCollection
 {
+    use HandlesContextTrait;
+    use HandlesNestedRelationsTrait;
 
-	use HandlesContextTrait, HandlesNestedRelationsTrait;
-
-	/**
-	 * @override
-	 */
-	public function toArray($request)
+    /**
+     * @override
+     */
+    public function toArray($request)
     {
-
-    	// Pass the relations and context down to each item in the collection.
-    	$this->collection->each(function($item) {
-    		$item->setRelations($this->relations);
+        // Pass the relations and context down to each item in the collection.
+        $this->collection->each(function ($item) {
+            $item->setRelations($this->relations);
             $item->setContext($this->context);
-    	});
+        });
+
+        // Retain the key preservation state.
+        if ($item = $this->collection->first()) {
+            $this->preserveKeys = $item->preserveKeys;
+        }
+
         return parent::toArray($request);
     }
 
@@ -37,5 +42,4 @@ class AnonymousResourceCollection extends BaseAnonymousResourceCollection
             ? (new PaginatedResourceResponse($this))->toResponse($request)
             : (new ResourceResponse($this))->toResponse($request);
     }
-
 }
