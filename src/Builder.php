@@ -9,8 +9,8 @@ use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
-class Builder implements Responsable {
-
+class Builder implements Responsable
+{
     protected $resourceable;
     protected $resource_class;
     protected $resource;
@@ -31,7 +31,6 @@ class Builder implements Responsable {
     public function getResource()
     {
         if (!$this->resource) {
-
             // Determine whether to create a model / collection resource based on the resourceable type.
             if ($this->resourceable instanceof Model) {
                 $this->resource = new $this->resource_class($this->resourceable);
@@ -61,7 +60,7 @@ class Builder implements Responsable {
 
         // Merge the provided list of requested relations. Note that we ensure any relation names submitted
         // in the request are in camelCase so they can be loaded correctly.
-        $this->requested_relations = array_merge($this->requested_relations ?: [], array_map(function($relation) {
+        $this->requested_relations = array_merge($this->requested_relations ?: [], array_map(function ($relation) {
             return Str::camel($relation);
         }, $relations));
 
@@ -110,7 +109,7 @@ class Builder implements Responsable {
     /**
      * Store context data.
      */
-    public function withContext($context) : Builder
+    public function withContext($context): Builder
     {
         $this->context = $context;
         return $this;
@@ -119,9 +118,9 @@ class Builder implements Responsable {
     /**
      * Expand an array of potentially nested relations into all variants.
      */
-    protected function unnestRelations(array $relations) : array
+    protected function unnestRelations(array $relations): array
     {
-        return array_unique(Arr::collapse(array_map(function($relation) {
+        return array_unique(Arr::collapse(array_map(function ($relation) {
             return $this->unnestRelation($relation);
         }, $relations)));
     }
@@ -129,7 +128,7 @@ class Builder implements Responsable {
     /**
      * Return a relation as an array of possible nested variants.
      */
-    protected function unnestRelation(string $relation) : array
+    protected function unnestRelation(string $relation): array
     {
         $str = '';
         $relations = [];
@@ -162,11 +161,20 @@ class Builder implements Responsable {
     }
 
     /**
+     * Prepare the resource and convert to an array containing pagination information from the request.
+     */
+    public function toPaginator($request)
+    {
+        return $this->prepare()
+            ->getResource()
+            ->toPaginator($request);
+    }
+
+    /**
      * Prepare the resource for use.
      */
     protected function prepare()
     {
-
         // Remove any duplicated relations
         $relations = array_unique($this->relations);
 
@@ -174,7 +182,7 @@ class Builder implements Responsable {
         $this->loadMissingRelations($relations);
 
         // Split the potentially nested relations into arrays and pass to the resource.
-        $this->resource->setRelations(array_map(function($relation) {
+        $this->resource->setRelations(array_map(function ($relation) {
             return explode('.', $relation);
         }, $relations));
 
@@ -189,21 +197,18 @@ class Builder implements Responsable {
      */
     protected function loadMissingRelations(array $relations)
     {
-
         $loadable = $this->resourceable;
 
         // Determine if the reource is a paginator.
         if ($loadable instanceof AbstractPaginator) {
-
             // Get the paginator's underlying model collection and find the first model, if it exists.
-            $collection = $loadable->getCollection()->map(function($item) {
+            $collection = $loadable->getCollection()->map(function ($item) {
                 return $item->resource ?? $item;
             });
 
             if ($model = $collection->first()) {
-
                 // Convert the paginator's (support) collection into a new (eloquent) collection. Note
-                // that we don't need to modify the paginator in any way, as all we want to do is 
+                // that we don't need to modify the paginator in any way, as all we want to do is
                 // obtain a reference to its models in one loadable object in preparation for eager loading.
                 $loadable = $model->newCollection($collection->all());
             } else {
@@ -216,5 +221,4 @@ class Builder implements Responsable {
             $loadable->loadMissing($relations);
         }
     }
-
 }

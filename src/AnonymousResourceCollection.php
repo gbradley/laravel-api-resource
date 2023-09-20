@@ -8,6 +8,7 @@ use GBradley\ApiResource\ResourceResponse;
 use GBradley\ApiResource\PaginatedResourceResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection as BaseAnonymousResourceCollection;
 use Illuminate\Pagination\AbstractPaginator;
+use BadMethodCallException;
 
 class AnonymousResourceCollection extends BaseAnonymousResourceCollection
 {
@@ -41,5 +42,14 @@ class AnonymousResourceCollection extends BaseAnonymousResourceCollection
         return $this->resource instanceof AbstractPaginator
             ? (new PaginatedResourceResponse($this))->toResponse($request)
             : (new ResourceResponse($this))->toResponse($request);
+    }
+
+    public function toPaginator($request)
+    {
+        if (!($this->resource instanceof AbstractPaginator)) {
+            throw new BadMethodCallException('Cannot call toPaginator on this object as it does not implement AbstractPaginator.');
+        }
+
+        return (new PaginatedResourceResponse($this))->toPaginator($request);
     }
 }
