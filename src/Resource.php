@@ -7,7 +7,7 @@ use GBradley\ApiResource\AnonymousResourceCollection;
 use GBradley\ApiResource\Extras\HandlesContextTrait;
 use GBradley\ApiResource\Extras\HandlesNestedRelationsTrait;
 use GBradley\ApiResource\ResourceResponse;
-use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
@@ -18,19 +18,19 @@ use Illuminate\Support\Str;
 
 class Resource extends JsonResource
 {
+    use HandlesContextTrait;
+    use HandlesNestedRelationsTrait;
 
-	use HandlesContextTrait, HandlesNestedRelationsTrait;
+    public static $wrap = 'data';
 
-	public static $wrap = 'data';
+    public static $wrapCollection = null;
 
-	public static $wrapCollection = null;
+    // ! Wrapping
 
-	// ! Wrapping
-
-	/**
-	 * @override
-	 */
-	public static function wrap($value)
+    /**
+     * @override
+     */
+    public static function wrap($value)
     {
         static::$wrap = $value;
         static::$wrapCollection = $value;
@@ -44,135 +44,139 @@ class Resource extends JsonResource
         static::$wrapCollection = $value;
     }
 
-	/**
-	 * @override
-	 */
-	public static function withoutWrapping()
+    /**
+     * @override
+     */
+    public static function withoutWrapping()
     {
         static::$wrap = null;
         static::$wrapCollection = null;
     }
 
-	/**
-	 * Create a new builder instance for the item to be converted into the called resource.
-	 */
-	public static function build($resourceable) : Builder
-	{
-		return new Builder($resourceable, get_called_class());
-	}
+    /**
+     * Create a new builder instance for the item to be converted into the called resource.
+     */
+    public static function build($resourceable): Builder
+    {
+        return new Builder($resourceable, get_called_class());
+    }
 
-	/**
-	 * @override - use our custom collection resource.
-	 */
-	public static function collection($resource)
-	{
-		return new AnonymousResourceCollection($resource, static::class);
-	}
+    /**
+     * @override - use our custom collection resource.
+     */
+    public static function collection($resource)
+    {
+        return new AnonymousResourceCollection($resource, static::class);
+    }
 
-	public function toResponse($request)
+    public function toResponse($request)
     {
         return (new ResourceResponse($this))->toResponse($request);
     }
 
-	/**
-	 * Return a representation of the resource from an array of attrbutes.
-	 */
-	protected function mergeAttributes($attributes)
-	{
+    /**
+     * Return a representation of the resource from an array of attrbutes.
+     */
+    protected function mergeAttributes($attributes)
+    {
+        if (!is_array($attributes)) {
+            $attributes = func_get_args();
+        }
 
-		if (!is_array($attributes)) {
-			$attributes = func_get_args();
-		}
+        $data = [];
+        $casts = $this->getCasts();
+        foreach ($attributes as $attribute) {
+            // Use call-forwarding to access the underling object's attribute value.
+            $value = $this->{$attribute};
 
-		$data = [];
-		$casts = $this->getCasts();
-		foreach ($attributes as $attribute) {
+            // If the value should be cast to date / datetime and a format is provided, apply the format to the value.
+            if (!(is_null($value)) && ($cast = $casts[$attribute] ?? null) && preg_match('/^date(?:time)?:(.+)/', $cast, $match)) {
+                $value = $value->format($match[1]);
+            }
 
-			// Use call-forwarding to access the underling object's attribute value.
-			$value = $this->{$attribute};
+            $data[$attribute] = $value;
+        }
 
-			// If the value should be cast to date / datetime and a format is provided, apply the format to the value.
-			if (!(is_null($value)) && ($cast = $casts[$attribute] ?? null) && preg_match('/^date(?:time)?:(.+)/', $cast, $match)) {
-				$value = $value->format($match[1]);
-			}
+        return $this->mergeWhen(true, $data);
+    }
 
-			$data[$attribute] = $value;
-		}
+    /**
+     * Return a merge value that ensures the relation is loaded when & only when
+     * it has been explicitly allowed by the controller.
+     */
+    protected function mergeWhenExplicitlyLoaded($relations)
+    {
+        if (!is_array($relations)) {
+            $relations = func_get_args();
+        }
 
-		return $this->mergeWhen(true, $data);
-	}
+        $mergeable = [];
+        $allowed = $this->getTopLevelRelations();
 
-	/**
-	 * Return a merge value that ensures the relation is loaded when & only when
-	 * it has been explicitly allowed by the controller.
-	 */
-	protected function mergeWhenExplicitlyLoaded($relations)
-	{
+        foreach ($relations as $relation => $resource_class) {
+            if (is_numeric($relation)) {
+                $relation = $resource_class;
+                $resource_class = null;
+            }
 
-		if (!is_array($relations)) {
-			$relations = func_get_args();
-		}
+            // Generate the "real" relation name.
+            $name = Str::camel($relation);
 
-		$mergeable = [];
-		$allowed = $this->getTopLevelRelations();
+            if (in_array($name, $allowed)) {
+                $mergeable[$relation] = $this->wrapWhenLoadedWith($name, $resource_class);
+            }
+        }
+        return $this->mergeWhen(true, $mergeable);
+    }
 
-		foreach ($relations as $relation => $resource_class) {
-			if (is_numeric($relation)) {
-				$relation = $resource_class;
-				$resource_class = null;
-			}
+    /**
+     * Create a 'whenLoaded' merge value for the named relation, and wrap it in the appropriate resource if provided.
+     */
+    protected function wrapWhenLoadedWith(string $relation, string|array|null $resource)
+    {
+        $when = $this->whenLoaded($relation);
 
-			// Generate the "real" relation name.
-			$name = Str::camel($relation);
+        // If a resource is provided, determine how to use it.
+        if ($resource) {
+            // If this is a morph, determine which resource to use.
+            if (is_array($resource)) {
+                $morph_type = $relation . '_type';
+                $morph_alias = $this->resource->$morph_type;
+                $morph_class = Relation::getMorphedModel($morph_alias);
+                $resource = $resource[$morph_class];
+            }
 
-			if (in_array($name, $allowed)) {
-				$mergeable[$relation] = $this->wrapWhenLoadedWith($name, $resource_class);
-			}
-		}
-		return $this->mergeWhen(true, $mergeable);
-	}
+            if ($this->isSinglularRelation($relation)) {
+                $when = new $resource($when);
+            } else {
+                $when = $resource::collection($when);
+            }
+            $when->setRelations($this->getNestedRelations());
+            $when->setContext($this->context);
+        }
 
-	/**
-	 * Create a 'whenLoaded' merge value for the named relation, and wrap it in the appropriate resource if provided.
-	 */
-	protected function wrapWhenLoadedWith(string $relation, ?string $resource)
-	{
-		$when = $this->whenLoaded($relation);
+        return $when;
+    }
 
-		// If a resource is provided, determine how to use it.
-		if ($resource) {
-			if ($this->isSinglularRelation($relation)) {
-				$when = new $resource($when);
-			} else {
-				$when = $resource::collection($when);
-			}
-			$when->setRelations($this->getNestedRelations());
-			$when->setContext($this->context);
-		}
+    /**
+     * Merge the current context.
+     */
+    protected function mergeContext($key = null)
+    {
+        $data = $this->getContext($key);
+        return $this->mergeWhen($data, $data);
+    }
 
-		return $when;
-	}
-
-	/**
-	 * Merge the current context.
-	 */
-	protected function mergeContext($key = null)
-	{
-		$data = $this->getContext($key);
-		return $this->mergeWhen($data, $data);
-	}
-
-	/**
-	 * Determine if the named relation will return a single instance or a collection.
-	 */
-	protected function isSinglularRelation(string $relation) : bool
-	{
-		$instance = $this->{$relation}();
-		return $instance instanceof BelongsTo
-			|| $instance instanceof HasOne
-			|| $instance instanceof HasOneThrough
-			|| $instance instanceof MorphOne
-			|| $instance instanceof MorphTo;
-	}
-
+    /**
+     * Determine if the named relation will return a single instance or a collection.
+     */
+    protected function isSinglularRelation(string $relation): bool
+    {
+        $instance = $this->{$relation}();
+        return $instance instanceof BelongsTo
+            || $instance instanceof HasOne
+            || $instance instanceof HasOneThrough
+            || $instance instanceof MorphOne
+            || $instance instanceof MorphTo;
+    }
 }

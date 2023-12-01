@@ -122,6 +122,8 @@ Now the controller has defined what it allows the resource to expose, you can co
 				]),
 			];
 		}
+		
+#### Transforming relations
 	
 When passing items sequentially, they will be exposed using the related object's `toArray` method. If you would like to transform them into other resources, pass the relation as the key and the desired resource class as the value. These techniques can be combined:
 
@@ -186,6 +188,28 @@ returning something like this:
 		]
 	}
 	
+
+#### Polymorphic relations
+
+For polymirphic relations, first add a `{relation}_type` property to your resource. Then, specify a map of the possible classes and their relations inside `mergeWhenExplicitlyLoaded()`:
+
+	class CommentResource extends Resource
+	{
+	
+		public function toArray($request)
+		{
+			return [
+				$this->mergeAttributes('id', 'content', 'commentable_type'),
+				$this->mergeWhenExplicitlyLoaded([
+					'author',
+					'commentable' => [
+					    Post::class => PostResource::class,
+					    Page::class => PageResource::class,
+					]
+				]),
+			];
+		}
+
 ### Contextual data
 
 Sometimes you may want to modify your resource's transformation based on information that isn't found in the request or the model being transformed.
