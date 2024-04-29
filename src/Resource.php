@@ -142,6 +142,12 @@ class Resource extends JsonResource
             if (is_array($resource)) {
                 $morph_type = $relation . '_type';
                 $morph_alias = $this->resource->$morph_type;
+
+                // Handle the case where the morphed relation may be null.
+                if ($morph_alias === null) {
+                    return $when;
+                }
+
                 $morph_class = Relation::getMorphedModel($morph_alias);
                 $resource = $resource[$morph_class];
             }
