@@ -7,6 +7,7 @@ use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class Builder implements Responsable
@@ -17,12 +18,14 @@ class Builder implements Responsable
     protected $relations = [];
     protected $requested_relations;
     protected $context;
+    protected $callbacks = [];
 
     public function __construct($resourceable, string $resource_class)
     {
         $this->resourceable = $resourceable;
         $this->resource_class = $resource_class;
         $this->resource = $this->getResource();
+        $this->callbacks = [];
     }
 
     /**
@@ -76,6 +79,8 @@ class Builder implements Responsable
             $relations = func_get_args();
         }
 
+        $relations = $this->extractCallbacks($relations);
+
         // Merge the provided list of relations.
         $this->relations = array_merge($this->relations, $relations);
 
@@ -91,6 +96,8 @@ class Builder implements Responsable
             $optional_relations = func_get_args();
         }
 
+        $optional_relations = $this->extractCallbacks($optional_relations);
+
         // If the requested relations haven't been retrieved, get them now.
         if ($this->requested_relations === null) {
             $this->withRequest(app('request'));
@@ -104,6 +111,52 @@ class Builder implements Responsable
 
         // Merge the allowed relations into the main relations array.
         return $this->withRelations($allowed);
+    }
+
+    protected function extractCallbacks($relations): array
+    {
+        $result = [];
+        foreach ($relations as $key => $value) {
+            if (is_callable($value)) {
+                $this->callbacks[$key] = $value;
+                $result[] = $key;
+            } else {
+                $result[] = $value;
+            }
+        }   
+        return $result;
+    }
+
+    protected function applyCallbacks($relations): void
+    {
+        foreach ($relations as $relation) {
+            if (isset($this->callbacks[$relation])) {
+                $this->applyCallback($this->resourceable, $relation, $this->callbacks[$relation]);
+            }
+        }
+    }
+
+    /**
+     * Apply a callback to the items related to a resourcable.
+     */
+    protected function applyCallback($resourceable, $relation, $callback)
+    {
+
+        // Get the first level of the relation, and call it.
+        $parts = explode('.', $relation, 2);
+        $resourceable = $resourceable->{array_shift($parts)};
+
+        if (count($parts)) {
+
+            // The relation is nested, so call the method again on each item.
+            $relation = implode('.', $parts);
+            ($resourceable instanceof Collection ? $resourceable : collect([$resourceable]))
+                ->each(fn($item) => $this->applyCallback($item, $relation, $callback));
+        } else {
+
+            // No longer nested, so pass the item into the callback.
+            $callback($resourceable);
+        }
     }
 
     /**
@@ -180,6 +233,9 @@ class Builder implements Responsable
 
         // Load any missing relations.
         $this->loadMissingRelations($relations);
+
+        // Apply any callbacks to the relations.
+        $this->applyCallbacks($relations);
 
         // Split the potentially nested relations into arrays and pass to the resource.
         $this->resource->setRelations(array_map(function ($relation) {

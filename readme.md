@@ -122,7 +122,17 @@ Now the controller has defined what it allows the resource to expose, you can co
 				]),
 			];
 		}
-		
+
+#### Modifying related models
+
+You may wish to modify models that have been loaded via these relations, before they are converted to their resource representations. You can do this by passing an associative array, with the relation name as the key and a closure as the value:
+
+    return PostResource::build($model)
+        ->withRelations('blog', 'author')
+        ->withOptionalRelations([
+            'comments.author' => fn($author) => $author->append('avatar')
+        ]);
+
 #### Transforming relations
 	
 When passing items sequentially, they will be exposed using the related object's `toArray` method. If you would like to transform them into other resources, pass the relation as the key and the desired resource class as the value. These techniques can be combined:
