@@ -97,7 +97,7 @@ class Resource extends JsonResource
             $data[$attribute] = $value;
         }
 
-        return $this->mergeWhen(true, $data);
+        return $this->mergeWhen(count($data), $data);
     }
 
     /**
@@ -126,7 +126,7 @@ class Resource extends JsonResource
                 $mergeable[$relation] = $this->wrapWhenLoadedWith($name, $resource_class);
             }
         }
-        return $this->mergeWhen(true, $mergeable);
+        return $this->mergeWhen(count($mergeable), $mergeable);
     }
 
     /**
