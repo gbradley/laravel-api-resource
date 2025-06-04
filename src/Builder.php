@@ -117,11 +117,11 @@ class Builder implements Responsable
     {
         $result = [];
         foreach ($relations as $key => $value) {
-            if (is_callable($value)) {
+            if (is_numeric($key)) {
+                $result[] = $value;
+            } else {
                 $this->callbacks[$key] = $value;
                 $result[] = $key;
-            } else {
-                $result[] = $value;
             }
         }   
         return $result;
