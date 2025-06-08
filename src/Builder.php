@@ -2,7 +2,6 @@
 
 namespace GBradley\ApiResource;
 
-use GBradley\ApiResource\Resource;
 use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\AbstractPaginator;
@@ -17,6 +16,7 @@ class Builder implements Responsable
     protected $resource;
     protected $relations = [];
     protected $requested_relations;
+    protected $without_eager_loading_relations = [];
     protected $context;
     protected $callbacks = [];
 
@@ -113,6 +113,20 @@ class Builder implements Responsable
         return $this->withRelations($allowed);
     }
 
+    /**
+     * Prevent eager-loading on the given relations.
+     */
+    public function withoutEagerLoading($relations)
+    {
+        if (!is_array($relations)) {
+            $relations = func_get_args();
+        }
+
+        $this->without_eager_loading_relations = array_merge($this->without_eager_loading_relations, $relations);
+
+        return $this;
+    }
+
     protected function extractCallbacks($relations): array
     {
         $result = [];
@@ -141,6 +155,9 @@ class Builder implements Responsable
      */
     protected function applyCallback($resourceable, $relation, $callback)
     {
+        if ($resourceable instanceof AbstractPaginator) {
+            return $resourceable->each(fn($item) => $this->applyCallback($item, $relation, $callback));
+        }
 
         // Get the first level of the relation, and call it.
         $parts = explode('.', $relation, 2);
@@ -272,9 +289,9 @@ class Builder implements Responsable
             }
         }
 
-        // Perform the eager load if required.
+        // Perform the eager load if possible.
         if ($loadable) {
-            $loadable->loadMissing($relations);
+            $loadable->loadMissing(array_diff($relations, $this->without_eager_loading_relations));
         }
     }
 }
